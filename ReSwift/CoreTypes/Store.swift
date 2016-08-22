@@ -90,9 +90,9 @@ public class Store<State: StateType>: StoreType {
     }
 
     #if swift(>=3)
-    public func subscribe<S: StoreSubscriber
-        where S.StoreSubscriberStateType == State>(_ subscriber: S) {
-            subscribe(subscriber, selector: nil)
+    public func subscribe<S: StoreSubscriber>(_ subscriber: S)
+        where S.StoreSubscriberStateType == State {
+            subscribe(subscriber, optSelector: nil)
     }
     #else
     public func subscribe<S: StoreSubscriber
@@ -102,25 +102,37 @@ public class Store<State: StateType>: StoreType {
     #endif
 
     #if swift(>=3)
-    public func subscribe<SelectedState, S: StoreSubscriber
-        where S.StoreSubscriberStateType == SelectedState>
-        (_ subscriber: S, selector: ((State) -> SelectedState)?) {
+    public func subscribe<SelectedState, S: StoreSubscriber>
+        (_ subscriber: S, selector: @escaping (State) -> SelectedState)
+        where S.StoreSubscriberStateType == SelectedState {
+            subscribe(subscriber, optSelector: selector)
+    }
+    
+    private func subscribe<SelectedState, S: StoreSubscriber>
+        (_ subscriber: S, optSelector: (@escaping (State) -> SelectedState)?)
+        where S.StoreSubscriberStateType == SelectedState {
             if !_isNewSubscriber(subscriber: subscriber) { return }
-
-            subscriptions.append(Subscription(subscriber: subscriber, selector: selector))
-
+            
+            subscriptions.append(Subscription(subscriber: subscriber, selector: optSelector))
+            
             if let state = self.state {
-                subscriber._newState(state: selector?(state) ?? state)
+                subscriber._newState(state: optSelector?(state) ?? state)
             }
     }
     #else
     public func subscribe<SelectedState, S: StoreSubscriber
         where S.StoreSubscriberStateType == SelectedState>
+        (subscriber: S, selector: ((State) -> SelectedState)) {
+            subscribe(subscriber, selector: selector)
+    }
+    
+    private func subscribe<SelectedState, S: StoreSubscriber
+        where S.StoreSubscriberStateType == SelectedState>
         (subscriber: S, selector: ((State) -> SelectedState)?) {
             if !_isNewSubscriber(subscriber) { return }
-
+    
             subscriptions.append(Subscription(subscriber: subscriber, selector: selector))
-
+    
             if let state = self.state {
                 subscriber._newState(selector?(state) ?? state)
             }
@@ -178,7 +190,7 @@ public class Store<State: StateType>: StoreType {
     #if swift(>=3)
     @discardableResult
     public func dispatch(_ actionCreatorProvider: ActionCreator) -> Any {
-        let action = actionCreatorProvider(state: state, store: self)
+        let action = actionCreatorProvider(state, self)
 
         if let action = action {
             dispatch(action)
@@ -211,8 +223,8 @@ public class Store<State: StateType>: StoreType {
     #if swift(>=3)
     public func dispatch(_ actionCreatorProvider: AsyncActionCreator,
                          callback: DispatchCallback?) {
-        actionCreatorProvider(state: state, store: self) { actionProvider in
-            let action = actionProvider(state: self.state, store: self)
+        actionCreatorProvider(state, self) { actionProvider in
+            let action = actionProvider(self.state, self)
 
             if let action = action {
                 self.dispatch(action)
@@ -235,11 +247,11 @@ public class Store<State: StateType>: StoreType {
 
     public typealias DispatchCallback = (State) -> Void
 
-    public typealias ActionCreator = (state: State, store: Store) -> Action?
+    public typealias ActionCreator = (_ state: State, _ store: Store) -> Action?
 
     public typealias AsyncActionCreator = (
-        state: State,
-        store: Store,
-        actionCreatorCallback: (ActionCreator) -> Void
+        _ state: State,
+        _ store: Store,
+        _ actionCreatorCallback: (ActionCreator) -> Void
     ) -> Void
 }
