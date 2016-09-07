@@ -109,7 +109,7 @@ public class Store<State: StateType>: StoreType {
     }
     
     private func subscribe<SelectedState, S: StoreSubscriber>
-        (_ subscriber: S, optSelector: (@escaping (State) -> SelectedState)?)
+        (_ subscriber: S, optSelector: ((State) -> SelectedState)?)
         where S.StoreSubscriberStateType == SelectedState {
             if !_isNewSubscriber(subscriber: subscriber) { return }
             
@@ -189,7 +189,7 @@ public class Store<State: StateType>: StoreType {
 
     #if swift(>=3)
     @discardableResult
-    public func dispatch(_ actionCreatorProvider: ActionCreator) -> Any {
+    public func dispatch(_ actionCreatorProvider: @escaping ActionCreator) -> Any {
         let action = actionCreatorProvider(state, self)
 
         if let action = action {
@@ -211,7 +211,7 @@ public class Store<State: StateType>: StoreType {
     #endif
 
     #if swift(>=3)
-    public func dispatch(_ asyncActionCreatorProvider: AsyncActionCreator) {
+    public func dispatch(_ asyncActionCreatorProvider: @escaping AsyncActionCreator) {
         dispatch(asyncActionCreatorProvider, callback: nil)
     }
     #else
@@ -221,7 +221,7 @@ public class Store<State: StateType>: StoreType {
     #endif
 
     #if swift(>=3)
-    public func dispatch(_ actionCreatorProvider: AsyncActionCreator,
+    public func dispatch(_ actionCreatorProvider: @escaping AsyncActionCreator,
                          callback: DispatchCallback?) {
         actionCreatorProvider(state, self) { actionProvider in
             let action = actionProvider(self.state, self)
